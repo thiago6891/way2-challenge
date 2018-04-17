@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace App
+﻿namespace App
 {
     class Program
     {
         static void Main(string[] args)
         {
+            var client = new Client("40.121.85.141", 20010);
+            client.Connect();
         }
     }
 }
