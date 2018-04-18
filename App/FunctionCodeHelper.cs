@@ -1,6 +1,6 @@
 ﻿namespace App
 {
-    class FunctionCodeHelper
+    public class FunctionCodeHelper
     {
         private static byte ExpectedResponseCode(FunctionCode code)
         {

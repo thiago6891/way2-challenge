@@ -1,6 +1,6 @@
 ﻿namespace App
 {
-    enum FunctionCode : byte
+    public enum FunctionCode : byte
     {
         ReadSerial = 0x01,
         ReadStatus = 0x02,
