@@ -193,5 +193,12 @@ namespace App
             SendAndReceive(FunctionCode.ReadStatus);
             return new ushort[2] { BitConverter.ToUInt16(response, 0), BitConverter.ToUInt16(response, 2) };
         }
+
+        public bool SetRegistryIndexToRead(ushort index)
+        {
+            var data = BitConverter.GetBytes(index);
+            SendAndReceive(FunctionCode.SetRegistry, data);
+            return response[0] == 0x00;
+        }
     }
 }

@@ -12,6 +12,15 @@ namespace App
             ushort[] registers = client.ReadRegistryStatus();
             Console.WriteLine(registers[0]);
             Console.WriteLine(registers[1]);
+            
+            if (client.SetRegistryIndexToRead(registers[0]))
+            {
+                Console.WriteLine("Index set successfully!");
+            }
+            else
+            {
+                Console.WriteLine("ERROR...");
+            }
         }
     }
 }
