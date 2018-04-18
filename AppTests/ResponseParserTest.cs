@@ -3,7 +3,7 @@
 namespace AppTests
 {
     [TestClass]
-    public class TestResponseParser
+    public class ResponseParserTest
     {
         [TestMethod]
         public void TestSerialNumberParsing()

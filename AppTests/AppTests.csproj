@@ -51,7 +51,7 @@
     <Compile Include="FrameTest.cs" />
     <Compile Include="FunctionCodeHelperTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TestResponseParser.cs" />
+    <Compile Include="ResponseParserTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
