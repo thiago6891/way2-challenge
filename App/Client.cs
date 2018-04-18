@@ -150,9 +150,9 @@ namespace App
             }
         }
 
-        private void SendAndReceive(FunctionCode code)
+        private void SendAndReceive(FunctionCode code, byte[] data = null)
         {
-            var frame = SendFrame(code);
+            var frame = SendFrame(code, data);
 
             response = null;
             while (response == null)
@@ -188,10 +188,10 @@ namespace App
             return Encoding.ASCII.GetString(response);
         }
 
-        public int[] ReadRegistryStatus()
+        public ushort[] ReadRegistryStatus()
         {
             SendAndReceive(FunctionCode.ReadStatus);
-            return new int[2] { response[0] * 256 + response[1], response[2] * 256 + response[3] };
+            return new ushort[2] { BitConverter.ToUInt16(response, 0), BitConverter.ToUInt16(response, 2) };
         }
     }
 }
