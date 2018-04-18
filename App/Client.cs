@@ -8,25 +8,6 @@ using System.Threading;
 
 namespace App
 {
-    class StateObject
-    {
-        private readonly byte[] sentData;
-
-        public readonly FunctionCode SentCode;
-        public readonly byte ExpectedResponse;
-        public readonly int? ExpectedResponseSize;
-
-        public byte[] SentData { get => sentData; }
-
-        public StateObject(FunctionCode sentCode, byte[] sentData, byte expectedResponse, int? expectedResponseSize)
-        {
-            SentCode = sentCode;
-            this.sentData = sentData;
-            ExpectedResponse = expectedResponse;
-            ExpectedResponseSize = expectedResponseSize;
-        }
-    }
-
     class Client
     {
         private const int bufferSize = 256;
@@ -36,6 +17,7 @@ namespace App
         private Socket socket;
         private byte[] response;
         private byte[] buffer;
+        private Frame lastFrameSent;
 
         private ManualResetEvent connectDone = new ManualResetEvent(false);
         private ManualResetEvent sendDone = new ManualResetEvent(false);
@@ -79,7 +61,7 @@ namespace App
             }
         }
 
-        private Frame SendFrame(FunctionCode code, byte[] data = null)
+        private void SendFrame(FunctionCode code, byte[] data = null)
         {
             var frame = new Frame(code, data);
 
@@ -87,78 +69,79 @@ namespace App
             sendDone.WaitOne();
             sendDone.Reset();
 
-            return frame;
+            lastFrameSent = frame;
         }
 
         private void SendCallback(IAsyncResult ar)
         {
-            var bytesSent = socket.EndSend(ar);
-            Console.WriteLine("Sent {0} bytes to server.", bytesSent);
+            socket.EndSend(ar);
             sendDone.Set();
         }
 
-        private void ReceiveFrame(StateObject state)
+        private void ReceiveFrame()
         {
             buffer = new byte[bufferSize];
-            socket.BeginReceive(buffer, 0, bufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+            socket.BeginReceive(buffer, 0, bufferSize, 0, new AsyncCallback(ReceiveCallback), null);
             receiveDone.WaitOne();
             receiveDone.Reset();
         }
 
         private void ReceiveCallback(IAsyncResult ar)
         {
-            try
+            bool received = false;
+            while (!received)
             {
-                var state = (StateObject)ar.AsyncState;
-                int bytesRead = socket.EndReceive(ar);
-                Console.WriteLine("Received {0} bytes from server.", bytesRead);
+                try
+                {
+                    int bytesRead = socket.EndReceive(ar);
 
-                var frame = Frame.Parse(buffer, bytesRead);
-                if (frame.IsError)
-                {
-                    // Resend last frame
-                    Console.WriteLine("Received Error Frame. Resending last frame...");
-                    SendFrame(state.SentCode, state.SentData);
+                    var responseFrame = Frame.Parse(buffer, bytesRead);
+                    if (responseFrame.IsError)
+                    {
+                        // Resend last frame
+                        Console.WriteLine("Received Error Frame. Resending last frame...");
+                        SendFrame(lastFrameSent.Code, lastFrameSent.Data);
+                    }
+                    else if ((byte)responseFrame.Code != ExpectedResponseCode(lastFrameSent.Code))
+                    {
+                        Console.WriteLine("Wrong Function Code. Sending error frame...");
+                        SendFrame(FunctionCode.Error);
+                    }
+                    else if (ExpectedResponseSize(lastFrameSent.Code).HasValue && ExpectedResponseSize(lastFrameSent.Code).Value != responseFrame.Data.Length)
+                    {
+                        Console.WriteLine("Unexpected response size. Sending error frame...");
+                        SendFrame(FunctionCode.Error);
+                    }
+                    else
+                    {
+                        response = responseFrame.Data;
+                        received = true;
+                        receiveDone.Set();
+                    }
                 }
-                else if ((byte)frame.Code != state.ExpectedResponse)
+                catch (InvalidFrameException e)
                 {
-                    Console.WriteLine("Wrong Function Code. Sending error frame...");
+                    Console.WriteLine(e.ToString());
+                    Console.WriteLine("Sending error frame...");
                     SendFrame(FunctionCode.Error);
                 }
-                else if (state.ExpectedResponseSize.HasValue && state.ExpectedResponseSize.Value != frame.Data.Length)
+                catch (Exception e)
                 {
-                    Console.WriteLine("Unexpected response size. Sending error frame...");
-                    SendFrame(FunctionCode.Error);
+                    Console.WriteLine(e.ToString());
+                    received = true;
+                    receiveDone.Set();
                 }
-                else
-                {
-                    response = frame.Data;
-                }
-            }
-            catch (InvalidFrameException e)
-            {
-                Console.WriteLine(e.ToString());
-                Console.WriteLine("Sending error frame...");
-                SendFrame(FunctionCode.Error);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-            finally
-            {
-                receiveDone.Set();
             }
         }
 
         private void SendAndReceive(FunctionCode code, byte[] data = null)
         {
-            var frame = SendFrame(code, data);
+            SendFrame(code, data);
 
             response = null;
             while (response == null)
             {
-                ReceiveFrame(new StateObject(code, frame.Data, ExpectedResponseCode(code), ExpectedResponseSize(code)));
+                ReceiveFrame();
             }
         }
 
