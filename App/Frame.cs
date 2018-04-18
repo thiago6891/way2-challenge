@@ -3,21 +3,6 @@ using System.Text;
 
 namespace App
 {
-    enum FunctionCode : byte
-    {
-        ReadSerial = 0x01,
-        ReadStatus = 0x02,
-        SetRegistry = 0x03,
-        ReadDateTime = 0x04,
-        ReadEnergyValue = 0x05,
-        ReadSerialResponse = 0x81,
-        ReadStatusResponse = 0x82,
-        SetRegistryResponse = 0x83,
-        ReadDateTimeResponse = 0x84,
-        ReadEnergyValueResponse = 0x85,
-        Error = 0xFF
-    }
-
     class Frame
     {
         protected const int MIN_FRAME_SIZE = 4;

@@ -12,15 +12,17 @@ namespace App
         private readonly byte[] sentData;
 
         public readonly FunctionCode SentCode;
-        public readonly FunctionCode ExpectedResponse;
+        public readonly byte ExpectedResponse;
+        public readonly int? ExpectedResponseSize;
 
         public byte[] SentData { get => sentData; }
 
-        public StateObject(FunctionCode sentCode, byte[] sentData, FunctionCode expectedResponse)
+        public StateObject(FunctionCode sentCode, byte[] sentData, byte expectedResponse, int? expectedResponseSize)
         {
             SentCode = sentCode;
             this.sentData = sentData;
             ExpectedResponse = expectedResponse;
+            ExpectedResponseSize = expectedResponseSize;
         }
     }
 
@@ -76,13 +78,15 @@ namespace App
             }
         }
 
-        private void SendFrame(FunctionCode code, byte[] data = null)
+        private Frame SendFrame(FunctionCode code, byte[] data = null)
         {
             var frame = new Frame(code, data);
 
             socket.BeginSend(frame.Bytes, 0, frame.Bytes.Length, 0, new AsyncCallback(SendCallback), socket);
             sendDone.WaitOne();
             sendDone.Reset();
+
+            return frame;
         }
 
         private void SendCallback(IAsyncResult ar)
@@ -115,9 +119,14 @@ namespace App
                     Console.WriteLine("Received Error Frame. Resending last frame...");
                     SendFrame(state.SentCode, state.SentData);
                 }
-                else if (frame.Code != state.ExpectedResponse)
+                else if ((byte)frame.Code != state.ExpectedResponse)
                 {
                     Console.WriteLine("Wrong Function Code. Sending error frame...");
+                    SendFrame(FunctionCode.Error);
+                }
+                else if (state.ExpectedResponseSize.HasValue && state.ExpectedResponseSize.Value != frame.Data.Length)
+                {
+                    Console.WriteLine("Unexpected response size. Sending error frame...");
                     SendFrame(FunctionCode.Error);
                 }
                 else
@@ -141,17 +150,48 @@ namespace App
             }
         }
 
-        public string ReadSerialNumber()
+        private void SendAndReceive(FunctionCode code)
         {
-            SendFrame(FunctionCode.ReadSerial);
+            var frame = SendFrame(code);
 
             response = null;
             while (response == null)
             {
-                ReceiveFrame(new StateObject(FunctionCode.ReadSerial, null, FunctionCode.ReadSerialResponse));
+                ReceiveFrame(new StateObject(code, frame.Data, ExpectedResponseCode(code), ExpectedResponseSize(code)));
             }
+        }
 
+        private static byte ExpectedResponseCode(FunctionCode code)
+        {
+            return (byte)(code + 0x80);
+        }
+
+        private static int? ExpectedResponseSize(FunctionCode code)
+        {
+            switch (code)
+            {
+                case FunctionCode.ReadStatus:
+                case FunctionCode.ReadEnergyValue:
+                    return 4;
+                case FunctionCode.SetRegistry:
+                    return 1;
+                case FunctionCode.ReadDateTime:
+                    return 5;
+                default:
+                    return null;
+            }
+        }
+
+        public string ReadSerialNumber()
+        {
+            SendAndReceive(FunctionCode.ReadSerial);
             return Encoding.ASCII.GetString(response);
+        }
+
+        public int[] ReadRegistryStatus()
+        {
+            SendAndReceive(FunctionCode.ReadStatus);
+            return new int[2] { response[0] * 256 + response[1], response[2] * 256 + response[3] };
         }
     }
 }
