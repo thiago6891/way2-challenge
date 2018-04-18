@@ -4,7 +4,7 @@ using System.Text;
 
 namespace App
 {
-    class ResponseParser
+    public class ResponseParser
     {
         public static string ParseSerialNumber(byte[] bytes)
         {
