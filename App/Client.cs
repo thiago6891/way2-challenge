@@ -235,5 +235,11 @@ namespace App
             }
             return result;
         }
+
+        public float ReadEnergyValue()
+        {
+            SendAndReceive(FunctionCode.ReadEnergyValue);
+            return BitConverter.ToSingle(response, 0);
+        }
     }
 }

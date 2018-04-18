@@ -23,6 +23,7 @@ namespace App
             }
 
             Console.WriteLine(client.ReadDateTime());
+            Console.WriteLine(client.ReadEnergyValue());
         }
     }
 }
