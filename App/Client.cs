@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 
 namespace App
@@ -102,12 +99,12 @@ namespace App
                         Console.WriteLine("Received Error Frame. Resending last frame...");
                         SendFrame(lastFrameSent.Code, lastFrameSent.Data);
                     }
-                    else if ((byte)responseFrame.Code != ExpectedResponseCode(lastFrameSent.Code))
+                    else if (!FunctionCodeHelper.IsExpectedCode(lastFrameSent.Code, responseFrame.Code))
                     {
                         Console.WriteLine("Wrong Function Code. Sending error frame...");
                         SendFrame(FunctionCode.Error);
                     }
-                    else if (ExpectedResponseSize(lastFrameSent.Code).HasValue && ExpectedResponseSize(lastFrameSent.Code).Value != responseFrame.Data.Length)
+                    else if (!FunctionCodeHelper.IsExpectedSize(lastFrameSent.Code, responseFrame.Data.Length))
                     {
                         Console.WriteLine("Unexpected response size. Sending error frame...");
                         SendFrame(FunctionCode.Error);
@@ -145,84 +142,34 @@ namespace App
             }
         }
 
-        private static byte ExpectedResponseCode(FunctionCode code)
-        {
-            return (byte)(code + 0x80);
-        }
-
-        private static int? ExpectedResponseSize(FunctionCode code)
-        {
-            switch (code)
-            {
-                case FunctionCode.ReadStatus:
-                case FunctionCode.ReadEnergyValue:
-                    return 4;
-                case FunctionCode.SetRegistry:
-                    return 1;
-                case FunctionCode.ReadDateTime:
-                    return 5;
-                default:
-                    return null;
-            }
-        }
-
         public string ReadSerialNumber()
         {
             SendAndReceive(FunctionCode.ReadSerial);
-            return Encoding.ASCII.GetString(response);
+            return ResponseParser.ParseSerialNumber(response);
         }
 
-        public ushort[] ReadRegistryStatus()
+        public Tuple<ushort, ushort> ReadRegistryStatus()
         {
             SendAndReceive(FunctionCode.ReadStatus);
-            return new ushort[2] { BitConverter.ToUInt16(response, 0), BitConverter.ToUInt16(response, 2) };
+            return ResponseParser.ParseRegistryStatus(response);
         }
 
         public bool SetRegistryIndexToRead(ushort index)
         {
-            var data = BitConverter.GetBytes(index);
-            SendAndReceive(FunctionCode.SetRegistry, data);
-            return response[0] == 0x00;
+            SendAndReceive(FunctionCode.SetRegistry, BitConverter.GetBytes(index));
+            return ResponseParser.IsSetRegisterResponseSuccessful(response);
         }
 
         public DateTime ReadDateTime()
         {
             SendAndReceive(FunctionCode.ReadDateTime);
-            Array.Reverse(response);
-            var bits = ReverseBitArray(new BitArray(response));
-
-            int year = ConvertBitsToInteger(bits, 0, 12);
-            int month = ConvertBitsToInteger(bits, 12, 4);
-            int day = ConvertBitsToInteger(bits, 16, 5);
-            int hour = ConvertBitsToInteger(bits, 21, 5);
-            int minute = ConvertBitsToInteger(bits, 26, 6);
-            int second = ConvertBitsToInteger(bits, 32, 6);
-
-            return new DateTime(year, month, day, hour, minute, second);
+            return ResponseParser.ParseDateTime(response);
         }
-
-        private static BitArray ReverseBitArray(BitArray array)
-        {
-            bool[] tmp = new bool[array.Count];
-            array.CopyTo(tmp, 0);
-            Array.Reverse(tmp);
-            return new BitArray(tmp);
-        }
-
-        private static int ConvertBitsToInteger(BitArray bits, int idx, int length)
-        {
-            int result = 0;
-            for (int i = idx, f = (int)Math.Round(Math.Pow(2, length - 1)); i < idx + length; i++, f /= 2)
-            {
-                result += bits[i] ? f : 0;
-            }
-            return result;
-        }
-
+        
         public float ReadEnergyValue()
         {
             SendAndReceive(FunctionCode.ReadEnergyValue);
-            return BitConverter.ToSingle(response, 0);
+            return ResponseParser.ParseEnergyValue(response);
         }
     }
 }
