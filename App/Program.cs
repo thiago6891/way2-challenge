@@ -15,12 +15,14 @@ namespace App
             
             if (client.SetRegistryIndexToRead(registers[0]))
             {
-                Console.WriteLine("Index set successfully!");
+                Console.WriteLine("Index set successfully: {0}", registers[0]);
             }
             else
             {
                 Console.WriteLine("ERROR...");
             }
+
+            Console.WriteLine(client.ReadDateTime());
         }
     }
 }
