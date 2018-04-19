@@ -2,7 +2,7 @@
 
 namespace App
 {
-    class Frame
+    public class Frame
     {
         protected const int MIN_FRAME_SIZE = 4;
 

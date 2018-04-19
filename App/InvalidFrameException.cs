@@ -4,7 +4,7 @@ using System.Runtime.Serialization;
 namespace App
 {
     [Serializable]
-    internal class InvalidFrameException : Exception
+    public class InvalidFrameException : Exception
     {
         public InvalidFrameException()
         {
