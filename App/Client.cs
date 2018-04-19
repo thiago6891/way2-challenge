@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace App
 {
-    class Client
+    class Client : IDisposable
     {
         private const int bufferSize = 256;
 
@@ -170,6 +170,14 @@ namespace App
         {
             SendAndReceive(FunctionCode.ReadEnergyValue);
             return ResponseParser.ParseEnergyValue(response);
+        }
+
+        public void Dispose()
+        {
+            connectDone.Dispose();
+            sendDone.Dispose();
+            receiveDone.Dispose();
+            socket.Dispose();
         }
     }
 }
