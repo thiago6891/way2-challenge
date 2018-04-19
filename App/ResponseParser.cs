@@ -25,6 +25,15 @@ namespace App
 
         public static DateTime ParseDateTime(byte[] bytes)
         {
+            // Since BitArray has the least significant digits come first, the bytes are first reversed
+            // and then the BitArray is reversed.
+            // Example:
+            // bytes                            =   { 0x7D, 0x80 }
+            // reversed bytes                   =   { 0x80, 0x7D }
+            // bit array from reversed bytes    =   0000 0001 | 1011 1110 => 0x01 | 0xBE
+            //                          * Note that 0000 0001 is 0x80 with the least significant bits first
+            //
+            // reversed bit array               =   0111 1101 | 1000 0000 => 0x7D | 0x80
             Array.Reverse(bytes);
             var bits = ReverseBitArray(new BitArray(bytes));
 

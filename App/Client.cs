@@ -85,8 +85,8 @@ namespace App
 
         private void ReceiveCallback(IAsyncResult ar)
         {
-            bool received = false;
-            while (!received)
+            bool receiveSuccessful = false;
+            while (!receiveSuccessful)
             {
                 try
                 {
@@ -95,7 +95,6 @@ namespace App
                     var responseFrame = Frame.Parse(buffer, bytesRead);
                     if (responseFrame.IsError)
                     {
-                        // Resend last frame
                         Console.WriteLine("Received Error Frame. Resending last frame...");
                         SendFrame(lastFrameSent.Code, lastFrameSent.Data);
                     }
@@ -112,7 +111,7 @@ namespace App
                     else
                     {
                         response = responseFrame.Data;
-                        received = true;
+                        receiveSuccessful = true;
                         receiveDone.Set();
                     }
                 }
@@ -125,7 +124,7 @@ namespace App
                 catch (Exception e)
                 {
                     Console.WriteLine(e.ToString());
-                    received = true;
+                    receiveSuccessful = true;
                     receiveDone.Set();
                 }
             }
@@ -170,6 +169,11 @@ namespace App
         {
             SendAndReceive(FunctionCode.ReadEnergyValue);
             return ResponseParser.ParseEnergyValue(response);
+        }
+
+        public void Disconnect()
+        {
+            socket.Disconnect(false);
         }
 
         public void Dispose()
